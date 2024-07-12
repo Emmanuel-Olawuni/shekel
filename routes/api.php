@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\WalletController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -30,5 +32,5 @@ Route::middleware('auth:api')->group(function () {
     Route::post('wallet/debit', [WalletController::class, 'debit']);
     Route::post('wallet/paystack', [WalletController::class, 'payWithPaystack']);
     Route::post('wallet/split-payment', [WalletController::class, 'splitPayment']);
-
+    Route::get('transactions', [TransactionController::class, 'index']);
 });
