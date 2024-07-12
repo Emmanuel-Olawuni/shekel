@@ -6,124 +6,82 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-/**
- * @OA\Info(
- *      version="1.0.0",
- *      title="API Documentation",
- *      description="Swagger OpenApi description",
- *      @OA\Contact(
- *          email="example@example.com"
- *      )
- * )
- */
+use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Facades\JWTAuth;
+
 class AuthController extends Controller
 {
-     /**
-     * @OA\Post(
-     *     path="/api/register",
-     *     tags={"Authentication"},
-     *     summary="Register a new user",
-     *     description="Register a new user",
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             @OA\Property(property="name", type="string", example="John Doe"),
-     *             @OA\Property(property="email", type="string", example="john.doe@example.com"),
-     *             @OA\Property(property="password", type="string", example="password"),
-     *             @OA\Property(property="password_confirmation", type="string", example="password")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="User registered successfully",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="access_token", type="string"),
-     *             @OA\Property(property="token_type", type="string", example="Bearer")
-     *         )
-     *     ),
-     *     @OA\Response(response=400, description="Bad request"),
-     *     @OA\Response(response=422, description="Validation error")
-     * )
-     */
-
-     public function register(Request $request)
+    public function register(Request $request)
     {
-        $validatedData = $request->validate([
+        $validatedData = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => 'required|string|min:8',
         ]);
 
-        $user = User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'password' => Hash::make($validatedData['password']),
-        ]);
-
-        return response()->json(['message' => 'User registered successfully'], 200);
-    }
-
-    /**
-     * @OA\Post(
-     *     path="/api/login",
-     *     tags={"Authentication"},
-     *     summary="Log in a user",
-     *     description="Log in a user",
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             @OA\Property(property="email", type="string", example="john.doe@example.com"),
-     *             @OA\Property(property="password", type="string", example="password")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="User logged in successfully",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="access_token", type="string"),
-     *             @OA\Property(property="token_type", type="string", example="Bearer")
-     *         )
-     *     ),
-     *     @OA\Response(response=401, description="Invalid login details"),
-     *     @OA\Response(response=422, description="Validation error")
-     * )
-     */
-    public function login(Request $request)
-    {
-        $credentials = $request->only('email', 'password');
-
-        if (!Auth::attempt($credentials)) {
-            return response()->json(['message' => 'Invalid login details'], 401);
+        if ($validatedData->fails()) {
+            return response()->json(['error' => 'Invalid Form Input'], 400);
+        } else {
+            $user = User::create($request->all());
         }
 
-        $user = Auth::user();
-        $token = $user->createToken('authToken')->plainTextToken;
+        $token = JWTAuth::fromUser($user);
 
         return response()->json(['access_token' => $token, 'token_type' => 'Bearer'], 200);
     }
 
-    /**
-     * @OA\Get(
-     *     path="/api/user",
-     *     tags={"User"},
-     *     summary="Get user details",
-     *     description="Get user details",
-     *     @OA\Response(
-     *         response=200,
-     *         description="User details retrieved successfully",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="id", type="integer"),
-     *             @OA\Property(property="name", type="string"),
-     *             @OA\Property(property="email", type="string"),
-     *             @OA\Property(property="created_at", type="string", format="date-time"),
-     *             @OA\Property(property="updated_at", type="string", format="date-time")
-     *         )
-     *     ),
-     *     security={{"bearerAuth":{}}}
-     * )
-     */
-    public function getUser(Request $request)
+    public function getUser()
     {
-        return response()->json(auth()->user(), 200);
+        return response()->json(Auth::user(), 200);
+    }
+
+    public function login(Request $request)
+    {
+        $credentials = $request->only('email', 'password');
+        try {
+
+            if (!$token = JWTAuth::attempt($credentials)) {
+                return response()->json(['message' => 'Invalid login details'], 401);
+            }
+        } catch (JWTException $e) {
+            return response()->json(['message' => 'Cound not create token'], 500);
+        }
+        return response()->json(['access_token' => $token, 'token_type' => 'Bearer'],  200);
+    }
+    public function updateUser(Request $request, $id)
+    {
+
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => `required|string|email|max:255|unique:users` . $id,
+            'password' => 'required|string|min:8',
+
+        ]);
+
+        if (isset($validatedData['password'])) {
+            $validatedData['password'] = Hash::make($validatedData['password']);
+        }
+        $userToUpdate = User::find($id);
+        $userToUpdate->update($validatedData);
+
+        return response()->json([
+            'message' => "User updated successfully"
+        ], 200);
+    }
+    public function delete(Request $request, $id)
+    {
+
+        $userToDelete = User::find($id);
+
+        if (!$userToDelete) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
+        }
+        $userToDelete->delete();
+        return response()->json([
+            'message' => "User deleted successfully"
+        ], 200);
     }
 }
