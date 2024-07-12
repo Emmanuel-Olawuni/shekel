@@ -23,4 +23,12 @@ Route::middleware('auth:api')->group(function () {
     Route::put('users/{id}', [AuthController::class, 'updateUser']);
     Route::delete('users/{id}', [AuthController::class, 'delete']);
     Route::get('/user', [AuthController::class, 'getUser']);
+
+    //wallet
+
+    Route::post('wallet/credit', [WalletController::class, 'credit']);
+    Route::post('wallet/debit', [WalletController::class, 'debit']);
+    Route::post('wallet/paystack', [WalletController::class, 'payWithPaystack']);
+    Route::post('wallet/split-payment', [WalletController::class, 'splitPayment']);
+
 });

@@ -4,62 +4,111 @@ namespace App\Http\Controllers;
 
 use App\Models\Wallet;
 use Illuminate\Http\Request;
+use Yansongda\Pay\Pay;
+use Yansongda\Pay\Log;
 
 class WalletController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function credit(Request $request)
     {
-        //
+        $validatedData = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        $wallet = Auth::user()->wallet;
+        $wallet->balance += $validatedData['amount'];
+        $wallet->save();
+
+        // Log transaction
+        Transaction::create([
+            'user_id' => Auth::id(),
+            'wallet_id' => $wallet->id,
+            'type' => 'credit',
+            'amount' => $validatedData['amount'],
+        ]);
+
+        return response()->json(['message' => 'Wallet credited successfully', 'balance' => $wallet->balance]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function debit(Request $request)
     {
-        //
+        $validatedData = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        $wallet = Auth::user()->wallet;
+
+        if ($wallet->balance < $validatedData['amount']) {
+            return response()->json(['error' => 'Insufficient balance'], 400);
+        }
+
+        $wallet->balance -= $validatedData['amount'];
+        $wallet->save();
+
+        // Log transaction
+        Transaction::create([
+            'user_id' => Auth::id(),
+            'wallet_id' => $wallet->id,
+            'type' => 'debit',
+            'amount' => $validatedData['amount'],
+        ]);
+
+        return response()->json(['message' => 'Wallet debited successfully', 'balance' => $wallet->balance]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function splitPayment(Request $request)
     {
-        //
-    }
+        $validatedData = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'paystack_amount' => 'required|numeric|min:0.01',
+        ]);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Wallet $wallet)
-    {
-        //
-    }
+        $wallet = Auth::user()->wallet;
+        $walletAmount = $wallet->balance;
+        $totalAmount = $validatedData['amount'];
+        $paystackAmount = $validatedData['paystack_amount'];
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Wallet $wallet)
-    {
-        //
-    }
+        if ($walletAmount + $paystackAmount < $totalAmount) {
+            return response()->json(['error' => 'Insufficient funds in wallet and Paystack combined'], 400);
+        }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Wallet $wallet)
-    {
-        //
-    }
+        $walletDebitAmount = $totalAmount - $paystackAmount;
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Wallet $wallet)
-    {
-        //
-    }
+        if ($walletDebitAmount > $walletAmount) {
+            $walletDebitAmount = $walletAmount;
+        }
+
+        $wallet->balance -= $walletDebitAmount;
+        $wallet->save();
+
+        Transaction::create([
+            'user_id' => Auth::id(),
+            'wallet_id' => $wallet->id,
+            'type' => 'debit',
+            'amount' => $walletDebitAmount,
+        ]);
+
+        if ($paystackAmount > 0) {
+            $order = [
+                'out_trade_no' => uniqid(),
+                'total_amount' => $paystackAmount,
+                'subject' => 'Split Payment Top-up',
+            ];
+
+            $paystack = Pay::paystack([
+                'public_key' => config('services.paystack.public'),
+                'secret_key' => config('services.paystack.secret'),
+            ]);
+
+            try {
+                $result = $paystack->pay($order);
+                // Handle successful payment via Paystack
+            } catch (\Exception $e) {
+                Log::error('Payment failed: ' . $e->getMessage());
+                return response()->json(['error' => 'Payment via Paystack failed'], 500);
+            }
+        }
+
+        return response()->json(['message' => 'Split payment successful', 'wallet_balance' => $wallet->balance]);
+    } 
 }
