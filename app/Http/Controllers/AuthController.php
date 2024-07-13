@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -24,11 +25,15 @@ class AuthController extends Controller
             return response()->json(['error' => 'Invalid Form Input'], 400);
         } else {
             $user = User::create($request->all());
+
+            $user->wallet()->create([
+                'balance' => 0.0, 
+            ]);
         }
 
         $token = JWTAuth::fromUser($user);
 
-        return response()->json(['access_token' => $token, 'token_type' => 'Bearer'], 200);
+        return response()->json(['access_token' => $token, 'token_type' => 'Bearer'], 201);
     }
 
     public function getUser()
@@ -42,19 +47,22 @@ class AuthController extends Controller
         try {
 
             if (!$token = JWTAuth::attempt($credentials)) {
-                return response()->json(['message' => 'Invalid login details'], 401);
+                return response()->json(['error' => 'Invalid login credentials'], 401);
             }
         } catch (JWTException $e) {
             return response()->json(['message' => 'Cound not create token'], 500);
         }
-        return response()->json(['access_token' => $token, 'token_type' => 'Bearer'],  200);
+        return response()->json(['access_token' => $token, 'token_type' => 'Bearer'],  201);
     }
-    public function updateUser(Request $request, $id)
+    public function updateUser(Request $request)
     {
-
+        $user = Auth::user();
+        $userID = Auth::user()->id;
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => `required|string|email|max:255|unique:users` . $id,
+            'email' =>[
+                'required', Rule::unique('users')->ignore($userID)
+            ] ,
             'password' => 'required|string|min:8',
 
         ]);
@@ -62,17 +70,18 @@ class AuthController extends Controller
         if (isset($validatedData['password'])) {
             $validatedData['password'] = Hash::make($validatedData['password']);
         }
-        $userToUpdate = User::find($id);
+        $userToUpdate = User::find($userID);
         $userToUpdate->update($validatedData);
 
         return response()->json([
             'message' => "User updated successfully"
-        ], 200);
+        ], 201);
     }
-    public function delete(Request $request, $id)
+    public function delete(Request $request)
     {
+        $userID = Auth::user()->id;
 
-        $userToDelete = User::find($id);
+        $userToDelete = User::find($userID);
 
         if (!$userToDelete) {
             return response()->json([

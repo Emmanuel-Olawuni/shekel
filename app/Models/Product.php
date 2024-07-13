@@ -5,13 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Discount extends Model
+class Product extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'code', 'type',
-        'value',
-        'start_date',
-        'end_date'
+        'name', 'description', 'price',
     ];
+
+    public function purchasedItems()
+    {
+        return $this->hasMany(PurchasedItems::class);
+    }
+
 }

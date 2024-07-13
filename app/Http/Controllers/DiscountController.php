@@ -24,36 +24,39 @@ class DiscountController extends Controller
             return response()->json(['message' => 'Discount created successfully', 'discount' => $discount], 201);
         }
 
-        return response()->json(['error' => 'Invalid Input. Unable to create Discount '], 401);
+        return response()->json(['error' => 'Invalid Input. Unable to create Discount '], 400);
     }
 
     public function apply(Request $request)
     {
-        $validatedData = $request->validate([
+        $validateData = Validator::make($request->all(), [
             'code' => 'required|string|exists:discounts,code',
             'amount' => 'required|numeric|min:0.01',
         ]);
+        if (!$validateData->fails()) {
 
-        $discount = Discount::where('code', $validatedData['code'])->first();
+            $discount = Discount::where('code', $request->code)->first();
 
-        if ($discount->start_date > now() || $discount->end_date < now()) {
-            return response()->json(['error' => 'Discount code is not valid at this time'], 400);
+            if ($discount->start_date > now() || $discount->end_date < now()) {
+                return response()->json(['error' => 'Discount code is not valid at this time'], 400);
+            }
+
+            $discountedAmount = $request->amount;
+            switch ($discount->type) {
+                case 'percentage':
+                    $discountedAmount -= $request->amount * ($discount->value / 100);
+                    break;
+                case 'fixed':
+                    $discountedAmount -= $discount->value;
+                    break;
+
+                default:
+                    $discountedAmount = max($discountedAmount, 0);
+                    break;
+            }
+
+            return response()->json(['original_amount' => $request->amount, 'discounted_amount' => $discountedAmount], 201);
         }
-
-        $discountedAmount = $validatedData['amount'];
-        switch ($discount->type) {
-            case 'percentage':
-                $discountedAmount -= $validatedData['amount'] * ($discount->value / 100);
-                break;
-            case 'fixed':
-                $discountedAmount -= $discount->value;
-                break;
-
-            default:
-                $discountedAmount = max($discountedAmount, 0);
-                break;
-        }
-
-        return response()->json(['original_amount' => $validatedData['amount'], 'discounted_amount' => $discountedAmount], 201);
+        return response()->json(['error'=> 'Unable to apply discount code']);
     }
 }
