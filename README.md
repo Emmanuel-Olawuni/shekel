@@ -34,7 +34,7 @@ The Shekel Mobility Assessment Project is a Laravel-based application designed t
 
 ```bash
 # Clone the repository
-git clone [https://github.com/Emmanuel-Olawuni/shekel.git](https://github.com/Emmanuel-Olawuni/shekel.git)
+git clone https://github.com/Emmanuel-Olawuni/shekel.git
 cd Shekel
 ```
 # Install dependencies
