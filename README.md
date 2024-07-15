@@ -64,7 +64,13 @@ DB_DATABASE=your_database_name
 DB_USERNAME=your_database_username
 DB_PASSWORD=your_database_password
  ```
+# Generate your secret key
 
+```bash
+php artisan jwt:secret
+```
+
+Set the JWT_SECRET on your env folder to the secrent key
 
 # Migrate the database
 
