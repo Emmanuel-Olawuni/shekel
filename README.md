@@ -78,7 +78,12 @@ php artisan serve
 ```
 
 # Run unit tests
+```bash
 php artisan test --testsuite=Unit
+```
+
+# API Documentation
+[https://www.postman.com/emma2001/workspace/shekel](https://www.postman.com/emma2001/workspace/shekel)
 
 
 
