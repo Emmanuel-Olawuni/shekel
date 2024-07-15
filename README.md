@@ -83,7 +83,7 @@ php artisan test --testsuite=Unit
 ```
 
 # API Documentation
-[https://www.postman.com/emma2001/workspace/shekel](https://www.postman.com/emma2001/workspace/shekel)
+[https://www.postman.com/emma2001/workspace/shekel/collection/23922527-4a2c8eda-f1e7-492a-b838-c50ec16b1d58?action=share&creator=23922527](https://www.postman.com/emma2001/workspace/shekel/collection/23922527-4a2c8eda-f1e7-492a-b838-c50ec16b1d58?action=share&creator=23922527)
 
 
 
