@@ -162,6 +162,7 @@ return [
          * Package Service Providers...
          */
         L5Swagger\L5SwaggerServiceProvider::class,
+        Unicodeveloper\Paystack\PaystackServiceProvider::class,
 
 
         /*
@@ -187,7 +188,7 @@ return [
     */
 
     'aliases' => Facade::defaultAliases()->merge([
-        // 'Example' => App\Facades\Example::class,
-    ])->toArray(),
+        'Paystack' => Unicodeveloper\Paystack\Facades\Paystack::class,
+        ])->toArray(),
 
 ];
