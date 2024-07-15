@@ -36,26 +36,32 @@ The Shekel Mobility Assessment Project is a Laravel-based application designed t
 # Clone the repository
 git clone [https://github.com/Emmanuel-Olawuni/shekel.git](https://github.com/Emmanuel-Olawuni/shekel.git)
 cd Shekel
-
+```
 # Install dependencies
+```bash
 composer install
+```
 
 # Create a copy of the .env file
+```bash
 cp .env.example .env
+```
 
 # Generate the application key
+```bash
 php artisan key:generate
+```
 
 #Database Configuration:
 
-Open the .env file and update the following variables with your database information:
+Open the .env file and update the following variables with your database information
 
 ```bash
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=your_database_name
-DB_USERNAME=your_database_user
+DB_USERNAME=your_database_username
 DB_PASSWORD=your_database_password
  ```
 
