@@ -21,35 +21,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('user/delete', [AuthController::class, 'delete']);
     Route::get('user', [AuthController::class, 'getUser']);
 
-    // Wallet
-    /**
-     * @OA\Post(
-     *     path="/api/wallet/credit",
-     *     summary="Credit wallet",
-     *     tags={"Wallet"},
-     *     security={{ "bearerAuth": {} }},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Provide amount to credit",
-     *         @OA\JsonContent(
-     *             required={"amount"},
-     *             @OA\Property(property="amount", type="number", example=100),
-     *         ),
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Wallet credited successfully",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Wallet credited successfully"),
-     *             @OA\Property(property="wallet_balance", type="number", example=500),
-     *         ),
-     *     ),
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthorized",
-     *     ),
-     * )
-     */
+   
     Route::post('wallet/credit', [WalletController::class, 'credit']);
 
    

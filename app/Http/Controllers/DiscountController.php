@@ -33,14 +33,14 @@ class DiscountController extends Controller
             'code' => 'required|string|exists:discounts,code',
             'amount' => 'required|numeric|min:0.01',
         ]);
+    
         if (!$validateData->fails()) {
-
             $discount = Discount::where('code', $request->code)->first();
-
+    
             if ($discount->start_date > now() || $discount->end_date < now()) {
                 return response()->json(['error' => 'Discount code is not valid at this time'], 400);
             }
-
+    
             $discountedAmount = $request->amount;
             switch ($discount->type) {
                 case 'percentage':
@@ -49,14 +49,17 @@ class DiscountController extends Controller
                 case 'fixed':
                     $discountedAmount -= $discount->value;
                     break;
-
-                default:
-                    $discountedAmount = max($discountedAmount, 0);
-                    break;
             }
-
-            return response()->json(['original_amount' => $request->amount, 'discounted_amount' => $discountedAmount], 201);
+    
+            $discountedAmount = max($discountedAmount, 0); // Ensure it doesn't go below 0
+    
+            return response()->json([
+                'original_amount' => $request->amount,
+                'discounted_amount' => $discountedAmount
+            ], 201);
         }
-        return response()->json(['error'=> 'Unable to apply discount code']);
+    
+        return response()->json(['error' => 'Unable to apply discount code'], 400);
     }
+    
 }

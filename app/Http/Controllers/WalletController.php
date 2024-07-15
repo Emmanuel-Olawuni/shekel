@@ -19,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 
 class WalletController extends Controller
 {
+   
     public function credit(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -66,7 +67,7 @@ class WalletController extends Controller
                 'type' => 'debit',
                 'amount' => $request['amount'],
             ]);
-            return response()->json(['message' => 'Wallet debited successfully', 'balance' => $wallet->balance], 201);
+            return response()->json(['message' => 'Wallet debited successfully', 'balance' => $wallet->balance], 200);
         };
 
         return response()->json([

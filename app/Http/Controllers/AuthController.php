@@ -15,24 +15,34 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $validatedData = Validator::make($request->all(), [
+        // Validate incoming request data
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
         ]);
 
-        if ($validatedData->fails()) {
+        // If validation fails, return error response
+        if ($validator->fails()) {
             return response()->json(['error' => 'Invalid Form Input'], 400);
-        } else {
-            $user = User::create($request->all());
-
-            $user->wallet()->create([
-                'balance' => 0.0, 
-            ]);
         }
 
+        // Create new user with validated data
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => bcrypt($request->password),
+        ]);
+
+        // Create a wallet for the user with initial balance
+        $user->wallet()->create([
+            'balance' => 0.0,
+        ]);
+
+        // Generate JWT token for the registered user
         $token = JWTAuth::fromUser($user);
 
+        // Return success response with JWT token
         return response()->json(['access_token' => $token, 'token_type' => 'Bearer'], 201);
     }
 
@@ -52,7 +62,7 @@ class AuthController extends Controller
         } catch (JWTException $e) {
             return response()->json(['message' => 'Cound not create token'], 500);
         }
-        return response()->json(['access_token' => $token, 'token_type' => 'Bearer'],  201);
+        return response()->json(['access_token' => $token, 'token_type' => 'Bearer'],  200);
     }
     public function updateUser(Request $request)
     {
@@ -60,9 +70,9 @@ class AuthController extends Controller
         $userID = Auth::user()->id;
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'email' =>[
+            'email' => [
                 'required', Rule::unique('users')->ignore($userID)
-            ] ,
+            ],
             'password' => 'required|string|min:8',
 
         ]);
