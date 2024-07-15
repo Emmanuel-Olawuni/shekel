@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use App\Models\PurchasedItems;
 use App\Models\Transaction;
 use App\Models\User;
@@ -19,7 +20,7 @@ use Illuminate\Http\JsonResponse;
 
 class WalletController extends Controller
 {
-   
+
     public function credit(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -78,93 +79,109 @@ class WalletController extends Controller
 
     public function purchase(Request $request)
     {
-        $validatedData = $request->validate([
+        $validator = Validator::make($request->all(), [
             'product_id' => 'required|integer|exists:products,id',
-            'price' => 'required|numeric|min:0.01',
-            'quantity' => 'required|numeric',
+            'quantity' => 'required|numeric|min:1',
             'payment_method' => 'required|string|in:wallet,paystack,stripe',
             'payment_reference' => 'nullable|string',
         ]);
 
-        $user = auth()->user();
-        $amount = $validatedData['price'] * $validatedData['quantity'];
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $validator->errors()->all()
+            ], 400);
+        }
 
         try {
-            if ($validatedData['payment_method'] == 'wallet') {
+            $user = Auth::user();
+            $product = Product::findOrFail($request->product_id);
+            $amount = $product->price * $request->quantity;
+
+            DB::beginTransaction();
+
+            $purchasedItem = PurchasedItems::create([
+                'user_id' => $user->id,
+                'product_id' => $request->product_id,
+                'price' => $amount,
+                'quantity' => $request->quantity,
+                'payment_method' => $request->payment_method,
+                'payment_reference' => $request->payment_reference,
+            ]);
+
+            if ($request->payment_method == 'wallet') {
                 $response = $this->handleWalletPayment($user, $amount);
 
-                if ($response instanceof JsonResponse) {
-                    return $response;
+                if ($response instanceof JsonResponse && $response->getStatusCode() !== 201) {
+                   return response()->json([
+                    'error' => 'Wallet Payment Failed'
+                   ] , 401);
                 }
-            } elseif ($validatedData['payment_method'] == 'paystack') {
+            } elseif ($request->payment_method == 'paystack') {
                 $redirectUrl = $this->handlePaystackPayment($user, $amount);
                 return response()->json([
                     'message' => 'Redirect to Paystack for payment',
                     'redirect_url' => $redirectUrl,
                 ], 200);
-            } elseif ($validatedData['payment_method'] == 'stripe') {
-                $this->handleStripePayment($validatedData['payment_reference'], $amount);
+            } elseif ($request->payment_method == 'stripe') {
+                $this->handleStripePayment($request->payment_reference, $amount);
                 return response()->json([
                     'message' => 'Redirect to Stripe for payment',
                 ], 200);
             }
 
-            PurchasedItems::create([
-                'user_id' => $user->id,
-                'product_id' => $validatedData['product_id'],
-                'price' => $validatedData['price'],
-                'payment_method' => $validatedData['payment_method'],
-                'quantity' => $validatedData['quantity'],
-            ]);
+            DB::commit();
 
             return response()->json([
                 'message' => 'Purchase successful',
+                'purchased_item' => $purchasedItem,
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Purchase failed, please try again'], 500);
+
+            return response()->json(['error' => 'Purchase failed: ' . $e->getMessage()], 500);
         }
     }
 
-
-    private function handleWalletPayment($user, $amount)
+    private function handleWalletPayment( $user, $amount)
     {
         $wallet = $user->wallet;
 
         if ($wallet->balance < $amount) {
-            return response()->json([
-                'error' => 'Insufficient balance'
-            ]);
+            return response()->json(['error' => 'Insufficient balance'], 400);
         }
 
         $wallet->balance -= $amount;
+
         try {
-            // Save the updated wallet balance
             $wallet->save();
+           
+            return response()->json(['message' => 'Payment Successful from wallet'], 201);
         } catch (\Exception $e) {
-            // Handle database save error
             return response()->json(['error' => 'Failed to deduct from wallet balance'], 500);
         }
     }
 
 
+
     private function handlePaystackPayment($user, $amount)
     {
         $paystackData = [
-            'amount' => $amount * 100, // Paystack requires amount in kobo
+            'amount' => $amount * 100, 
             'email' => $user->email,
             'currency' => 'NGN',
             'reference' => paystack()->genTranxRef(),
-            'callback_url' => route('paystack.callback'), // Replace with your callback URL route name
+            'callback_url' => route('paystack.callback'), 
         ];
 
         try {
             $redirectResponse = paystack()->getAuthorizationUrl($paystackData)->redirectNow();
 
-            // Return the redirect URL directly as a string
             return $redirectResponse->getTargetUrl();
         } catch (\Exception $e) {
-            throw new \Exception('Paystack payment failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Payment failed'
+            ]);
         }
     }
 
@@ -177,14 +194,14 @@ class WalletController extends Controller
             $paymentIntent = PaymentIntent::retrieve($paymentIntentId);
 
             if ($paymentIntent->status != 'succeeded') {
-                throw new \Exception('Stripe payment failed');
+                return response()->json(['error' => 'Stripe payment failed balance'], 500);
             }
 
             if ($paymentIntent->amount / 100 != $amount) {
-                throw new \Exception('Stripe payment amount mismatch');
+                return response()->json(['error' => 'Stripe amount mismatch '], 400);
             }
         } catch (\Exception $e) {
-            throw new \Exception('Stripe payment failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Stripe payment failed balance'], 500);
         }
     }
 

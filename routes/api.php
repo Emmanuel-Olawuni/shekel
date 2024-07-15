@@ -6,9 +6,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchasedItemsController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\WalletController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use OpenApi\Annotations as OA;
 
 
 Route::post('register', [AuthController::class, 'register']);
@@ -50,6 +48,5 @@ Route::middleware('auth:api')->group(function () {
     Route::get('purchaseditems', [PurchasedItemsController::class, 'index']);
 
  
-    Route::post('purchaseditems', [PurchasedItemsController::class, 'store']);
 
 });

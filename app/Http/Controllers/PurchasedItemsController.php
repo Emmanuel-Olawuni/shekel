@@ -2,11 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
 use App\Models\PurchasedItems;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
 
 class PurchasedItemsController extends Controller
 {
@@ -16,5 +13,4 @@ class PurchasedItemsController extends Controller
         return response()->json($purchasedItems);
     }
 
-    
 }
