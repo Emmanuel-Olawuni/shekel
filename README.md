@@ -52,7 +52,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-#Database Configuration:
+# Database Configuration:
 
 Open the .env file and update the following variables with your database information
 
@@ -70,7 +70,7 @@ DB_PASSWORD=your_database_password
 php artisan jwt:secret
 ```
 
-Set the JWT_SECRET on your env folder to the secrent key
+Set the JWT_SECRET on your env folder to the secret key
 
 # Migrate the database
 
